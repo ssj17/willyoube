@@ -6,39 +6,68 @@
     <title>Will X be Y?</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
+        :root {
+            --apple-blue: #0071e3;
+            --text-dark: #1d1d1f;
+            --bg-light: #f5f5f7;
+        }
+
         body {
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
             overflow: hidden;
             text-align: center;
         }
+
         #container {
-            position: relative;
-        }
-        h1 { font-size: 2.5rem; color: #333; }
-        .buttons { margin-top: 20px; position: relative; height: 100px; }
-        
-        button {
-            padding: 15px 30px;
-            font-size: 1.2rem;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.2s;
+            z-index: 10;
         }
 
-        #yesBtn { background-color: #4CAF50; color: white; }
-        
-        #noBtn {
-            background-color: #f44336;
+        h1 {
+            font-size: 48px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            letter-spacing: -0.003em;
+        }
+
+        p {
+            font-size: 21px;
+            margin-bottom: 30px;
+            color: #424245;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        button {
+            background-color: var(--apple-blue);
             color: white;
+            border: none;
+            padding: 12px 22px;
+            font-size: 17px;
+            font-weight: 400;
+            border-radius: 980px; /* Pill shape */
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: #0077ed;
+        }
+
+        #noBtn {
             position: absolute;
-            transition: all 0.1s ease;
+            transition: all 0.2s ease-out;
+            touch-action: none; /* Prevents scrolling on mobile while trying to tap */
         }
     </style>
 </head>
@@ -46,7 +75,8 @@
 
     <div id="container">
         <h1 id="question">Will X be Y?</h1>
-        <div class="buttons">
+        <p id="subtext">There's still time to choose the right answer.</p>
+        <div class="btn-group">
             <button id="yesBtn">Yes</button>
             <button id="noBtn">No</button>
         </div>
@@ -56,37 +86,71 @@
         const noBtn = document.getElementById('noBtn');
         const yesBtn = document.getElementById('yesBtn');
         const question = document.getElementById('question');
+        const subtext = document.getElementById('subtext');
 
-        // The "Runaway" logic
-        const moveButton = () => {
-            const x = Math.random() * (window.innerWidth - noBtn.offsetWidth);
-            const y = Math.random() * (window.innerHeight - noBtn.offsetHeight);
-            noBtn.style.left = `${x}px`;
-            noBtn.style.top = `${y}px`;
+        // Logic to move button diagonally away from cursor
+        const moveButton = (e) => {
+            const moveDistance = 150; // How far it jumps
+            const rect = noBtn.getBoundingClientRect();
+            const btnCenterX = rect.left + rect.width / 2;
+            const btnCenterY = rect.top + rect.height / 2;
+
+            // Get cursor/touch position
+            const mouseX = e.clientX || e.touches[0].clientX;
+            const mouseY = e.clientY || e.touches[0].clientY;
+
+            // Calculate direction vector from mouse to button center
+            let angle = Math.atan2(btnCenterY - mouseY, btnCenterX - mouseX);
+
+            // Calculate new position
+            let newX = rect.left + Math.cos(angle) * moveDistance;
+            let newY = rect.top + Math.sin(angle) * moveDistance;
+
+            // Keep it within screen bounds
+            const padding = 20;
+            newX = Math.max(padding, Math.min(newX, window.innerWidth - rect.width - padding));
+            newY = Math.max(padding, Math.min(newY, window.innerHeight - rect.height - padding));
+
+            noBtn.style.left = `${newX}px`;
+            noBtn.style.top = `${newY}px`;
         };
 
         noBtn.addEventListener('mouseover', moveButton);
         noBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Prevents clicking on mobile
-            moveButton();
+            e.preventDefault();
+            moveButton(e);
         });
 
-        // The "Yes" logic
+        // "Yes" sequence
         yesBtn.addEventListener('click', () => {
             question.innerText = "I knew you would say yes!";
+            subtext.style.display = 'none';
             noBtn.style.display = 'none';
             
-            // Fireworks animation (FaceTime style)
-            var duration = 5 * 1000;
-            var animationEnd = Date.now() + duration;
-            var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+            // FaceTime-style Fireworks
+            const end = Date.now() + (5 * 1000);
+            const colors = ['#ff2d55', '#0071e3', '#5856d6', '#ff9500'];
 
-            var interval = setInterval(function() {
-                var timeLeft = animationEnd - Date.now();
-                if (timeLeft <= 0) return clearInterval(interval);
-                var particleCount = 50 * (timeLeft / duration);
-                confetti({...defaults, particleCount, origin: { x: Math.random(), y: Math.random() - 0.2 }});
-            }, 250);
+            (function frame() {
+                confetti({
+                    particleCount: 3,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: colors
+                });
+                confetti({
+                    particleCount: 3,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: colors
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
         });
     </script>
 </body>
